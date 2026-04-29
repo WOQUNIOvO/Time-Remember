@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.timeremember.mapper.EventRecordMapper">
+    <select id="selectUserEvents" resultType="com.timeremember.vo.event.EventRecordVO">
+        SELECT
+            er.id,
+            er.event_date AS eventDate,
+            er.title,
+            er.category_id AS categoryId,
+            ec.name AS categoryName,
+            ec.color AS categoryColor,
+            er.note,
+            er.level,
+            er.created_at AS createdAt,
+            er.updated_at AS updatedAt
+        FROM event_record er
+        INNER JOIN event_category ec ON ec.id = er.category_id AND ec.deleted = 0
+        WHERE er.deleted = 0
+          AND er.user_id = #{userId}
+        <if test="startDate != null">
+          AND er.event_date &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+          AND er.event_date &lt;= #{endDate}
+        </if>
+        ORDER BY er.event_date ASC, er.created_at ASC
+    </select>
+
+    <select id="countByCategory" resultType="com.timeremember.vo.statistics.CategoryCountVO">
+        SELECT
+            ec.id AS categoryId,
+            ec.name AS categoryName,
+            ec.color AS categoryColor,
+            COUNT(er.id) AS count
+        FROM event_record er
+        INNER JOIN event_category ec ON ec.id = er.category_id AND ec.deleted = 0
+        WHERE er.deleted = 0
+          AND er.user_id = #{userId}
+        <if test="startDate != null">
+          AND er.event_date &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+          AND er.event_date &lt;= #{endDate}
+        </if>
+        GROUP BY ec.id, ec.name, ec.color
+        ORDER BY count DESC
+    </select>
+</mapper>
