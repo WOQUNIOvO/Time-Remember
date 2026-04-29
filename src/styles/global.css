@@ -1,0 +1,184 @@
+:root {
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  color: #4a3d4f;
+  background: #fff7fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --cute-pink: #ff8fc7;
+  --cute-pink-deep: #ff62aa;
+  --cute-blue: #8cc8ff;
+  --cute-yellow: #ffd86b;
+  --cute-mint: #8ee6c3;
+  --cute-lavender: #b9a7ff;
+  --cute-ink: #4a3d4f;
+  --cute-line: #ffe0ef;
+  --cute-panel: rgb(255 255 255 / 78%);
+  --cute-shadow: 0 18px 48px rgb(239 126 178 / 16%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  position: fixed;
+  inset: -42px;
+  z-index: -2;
+  content: "";
+  background:
+    url("/mascots/sanrio-5.jpg") center center / cover no-repeat;
+  filter: blur(12px) saturate(1.18) brightness(1.06);
+  opacity: .78;
+  transform: scale(1.08);
+}
+
+body::after {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  background:
+    url("/mascots/chiikawa-scene.jpg") left 4vw bottom 6vh / min(360px, 26vw) auto no-repeat,
+    url("/mascots/chan-main.png") right 3vw top 10vh / min(420px, 30vw) auto no-repeat,
+    linear-gradient(135deg, rgb(255 247 251 / 72%), rgb(241 248 255 / 62) 48%, rgb(255 249 226 / 66));
+  backdrop-filter: blur(1.5px);
+}
+
+#app::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 60%), rgb(255 255 255 / 24) 45%, rgb(255 255 255 / 56)),
+    radial-gradient(circle at 50% 48%, rgb(255 255 255 / 28), transparent 42%);
+}
+
+button,
+a,
+.el-button,
+.el-menu-item,
+.date-cell,
+.event-item,
+.page-card {
+  cursor: none;
+}
+
+.page-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 92%), rgb(255 255 255 / 76%)),
+    var(--cute-panel);
+  border: 1px solid rgb(255 224 239 / 88%);
+  border-radius: 22px;
+  box-shadow: var(--cute-shadow);
+  backdrop-filter: blur(14px);
+}
+
+.page-card::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    radial-gradient(circle at 18px 18px, rgb(255 255 255 / 88%) 0 5px, transparent 6px),
+    radial-gradient(circle at calc(100% - 24px) 24px, rgb(255 218 238 / 72%) 0 7px, transparent 8px);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.el-button {
+  border-radius: 999px;
+  font-weight: 700;
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.el-button:hover {
+  transform: translateY(-2px) scale(1.02);
+  filter: saturate(1.08);
+}
+
+.el-button--primary {
+  border: 0;
+  background: linear-gradient(135deg, var(--cute-pink), var(--cute-lavender));
+  box-shadow: 0 10px 22px rgb(255 116 184 / 24%);
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px rgb(255 197 226 / 76%) inset;
+}
+
+.el-dialog {
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 16% 0, rgb(255 205 230 / 72%), transparent 180px),
+    radial-gradient(circle at 84% 0, rgb(188 225 255 / 62%), transparent 180px),
+    rgb(255 255 255 / 94%);
+}
+
+.el-dialog__title {
+  color: var(--cute-ink);
+  font-weight: 800;
+}
+
+.el-table {
+  --el-table-border-color: #ffe2ef;
+  --el-table-header-bg-color: #fff4fa;
+  border-radius: 18px;
+}
+
+.el-table th.el-table__cell {
+  color: #8d6680;
+}
+
+.el-tag {
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+@media (hover: none), (pointer: coarse) {
+  button,
+  a,
+  .el-button,
+  .el-menu-item,
+  .date-cell,
+  .event-item,
+  .page-card {
+    cursor: auto;
+  }
+}
