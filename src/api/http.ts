@@ -19,6 +19,9 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
 http.interceptors.response.use(
   response => {
+    if (response.config.responseType === 'blob') {
+      return response
+    }
     const body = response.data as ApiResponse<unknown>
     if (body.code !== 0) {
       ElMessage.error(body.message || '请求失败')
@@ -44,6 +47,11 @@ http.interceptors.response.use(
 export async function request<T>(promise: Promise<{ data: ApiResponse<T> }>): Promise<T> {
   const response = await promise
   return response.data.data
+}
+
+export async function requestBlob(promise: Promise<{ data: Blob }>): Promise<Blob> {
+  const response = await promise
+  return response.data
 }
 
 export default http

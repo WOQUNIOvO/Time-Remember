@@ -7,6 +7,13 @@
         <h2>
           <img class="title-icon" :src="mascots.chiikawa[0]" alt="" />
           {{ currentMonth.format('YYYY 年 MM 月') }}
+          <span class="time-widget">
+            <img :src="mascots.sanrio[1]" alt="" />
+            <span class="time-content">
+              <span>{{ nowDateText }}</span>
+              <strong>{{ nowTimeText }}</strong>
+            </span>
+          </span>
         </h2>
         <div class="toolbar-actions">
           <el-button :icon="ArrowLeft" @click="moveMonth(-1)" />
@@ -28,12 +35,17 @@
           class="date-cell"
           :class="{ muted: !cell.currentMonth, active: cell.date === selectedDate }"
           @click="selectDate(cell.date)"
+          @dblclick="openCreate(cell.date)"
         >
           <img v-if="cell.date === selectedDate" class="selected-day-sticker" :src="mascots.chiikawa[4]" alt="" />
           <span class="date-number">{{ dayjs(cell.date).date() }}</span>
           <span v-for="event in groupedEvents[cell.date]?.slice(0, 3)" :key="event.id" class="event-chip">
             <span class="chip-dot" :style="{ backgroundColor: event.categoryColor }"></span>
             {{ event.title }}
+            <span v-if="attachmentMap[event.id]?.length" class="media-count">
+              <el-icon><PictureFilled /></el-icon>
+              {{ attachmentMap[event.id].length }}
+            </span>
           </span>
           <span v-if="(groupedEvents[cell.date]?.length || 0) > 3" class="more-chip">
             +{{ (groupedEvents[cell.date]?.length || 0) - 3 }}
@@ -66,6 +78,21 @@
             <el-tag size="small" :type="levelTag(event.level)">{{ levelText(event.level) }}</el-tag>
           </div>
           <p v-if="event.note">{{ event.note }}</p>
+          <div v-if="attachmentMap[event.id]?.length" class="media-strip">
+            <button
+              v-for="attachment in attachmentMap[event.id]"
+              :key="attachment.id"
+              class="media-thumb"
+              type="button"
+              @click="previewAttachment(attachment)"
+            >
+              <img v-if="attachment.type !== 'VIDEO'" :src="attachmentPreviewMap[attachment.id]" :alt="attachment.originalName" />
+              <video v-else :src="attachmentPreviewMap[attachment.id]" muted playsinline></video>
+              <span v-if="attachment.type === 'VIDEO'" class="media-play">
+                <el-icon><VideoCamera /></el-icon>
+              </span>
+            </button>
+          </div>
           <div class="event-actions">
             <el-tag size="small" effect="plain">{{ event.categoryName }}</el-tag>
             <span>
@@ -105,22 +132,64 @@
         <el-form-item label="备注" prop="note">
           <el-input v-model="form.note" type="textarea" maxlength="512" show-word-limit />
         </el-form-item>
+        <el-form-item label="图片 / 动图 / 视频">
+          <div class="attachment-uploader">
+            <el-upload
+              drag
+              multiple
+              accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime"
+              :show-file-list="false"
+              :http-request="uploadAttachmentRequest"
+            >
+              <el-icon class="upload-icon"><UploadFilled /></el-icon>
+              <div class="upload-text">拖入图片、GIF 或视频，或点击选择</div>
+              <template #tip>
+                <div class="upload-tip">支持 JPG / PNG / GIF / WEBP / MP4 / WEBM / MOV，单个文件不超过 50MB</div>
+              </template>
+            </el-upload>
+            <div v-if="pendingFiles.length || editingAttachments.length" class="attachment-list">
+              <article v-for="(file, index) in pendingFiles" :key="`${file.name}-${index}`" class="attachment-pill pending">
+                <el-icon><PictureFilled /></el-icon>
+                <span>{{ file.name }}</span>
+                <el-button :icon="Delete" text type="danger" @click="removePendingFile(index)" />
+              </article>
+              <article v-for="attachment in editingAttachments" :key="attachment.id" class="attachment-pill">
+                <el-icon>
+                  <VideoCamera v-if="attachment.type === 'VIDEO'" />
+                  <PictureFilled v-else />
+                </el-icon>
+                <button type="button" @click="previewAttachment(attachment)">{{ attachment.originalName }}</button>
+                <el-button :icon="Delete" text type="danger" @click="removeAttachment(attachment)" />
+              </article>
+            </div>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="saveEvent">保存</el-button>
       </template>
     </el-dialog>
+    <el-dialog v-model="previewVisible" title="媒体预览" width="720px" class="media-preview-dialog">
+      <div v-if="previewingAttachment" class="preview-stage">
+        <img
+          v-if="previewingAttachment.type !== 'VIDEO'"
+          :src="attachmentPreviewMap[previewingAttachment.id]"
+          :alt="previewingAttachment.originalName"
+        />
+        <video v-else :src="attachmentPreviewMap[previewingAttachment.id]" controls autoplay playsinline></video>
+      </div>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
-import { ArrowLeft, ArrowRight, Delete, Edit, Plus } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type TagProps } from 'element-plus'
-import { categoryApi, eventApi } from '@/api/modules'
-import type { Category, EventLevel, EventPayload, EventRecord } from '@/types/api'
+import { ArrowLeft, ArrowRight, Delete, Edit, PictureFilled, Plus, UploadFilled, VideoCamera } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type TagProps, type UploadRequestOptions } from 'element-plus'
+import { categoryApi, eventApi, eventAttachmentApi } from '@/api/modules'
+import type { Category, EventAttachment, EventLevel, EventPayload, EventRecord } from '@/types/api'
 import { mascots } from '@/constants/mascots'
 
 interface CalendarCell {
@@ -140,8 +209,14 @@ const weekIcons = [
 ]
 const currentMonth = ref(dayjs().startOf('month'))
 const selectedDate = ref(dayjs().format('YYYY-MM-DD'))
+const now = ref(dayjs())
 const events = ref<EventRecord[]>([])
 const categories = ref<Category[]>([])
+const attachmentMap = ref<Record<string, EventAttachment[]>>({})
+const attachmentPreviewMap = ref<Record<string, string>>({})
+const pendingFiles = ref<File[]>([])
+const previewVisible = ref(false)
+const previewingAttachment = ref<EventAttachment | null>(null)
 const loading = ref(false)
 const dialogVisible = ref(false)
 const saving = ref(false)
@@ -151,7 +226,7 @@ const formRef = ref<FormInstance>()
 const form = reactive<EventPayload>({
   eventDate: selectedDate.value,
   title: '',
-  categoryId: 0,
+  categoryId: '',
   note: '',
   level: 'MEDIUM'
 })
@@ -182,6 +257,10 @@ const groupedEvents = computed<Record<string, EventRecord[]>>(() => {
 })
 
 const selectedEvents = computed(() => groupedEvents.value[selectedDate.value] || [])
+const editingAttachments = computed(() => editing.value ? attachmentMap.value[editing.value.id] || [] : [])
+const nowDateText = computed(() => `${now.value.format('YYYY-MM-DD')} ${weekDayText(now.value.day())}`)
+const nowTimeText = computed(() => now.value.format('HH:mm:ss'))
+let timer: number | undefined
 
 async function loadData(): Promise<void> {
   const startDate = currentMonth.value.startOf('month').subtract(7, 'day').format('YYYY-MM-DD')
@@ -194,9 +273,21 @@ async function loadData(): Promise<void> {
     ])
     categories.value = categoryList
     events.value = eventList
+    await loadAttachments(eventList)
   } finally {
     loading.value = false
   }
+}
+
+async function loadAttachments(eventList: EventRecord[]): Promise<void> {
+  const entries = await Promise.all(eventList.map(async event => {
+    const attachments = await eventAttachmentApi.list(event.id)
+    return [event.id, attachments] as const
+  }))
+  attachmentMap.value = Object.fromEntries(entries)
+  selectedEvents.value.flatMap(event => attachmentMap.value[event.id] || []).slice(0, 12).forEach(attachment => {
+    void ensureAttachmentPreview(attachment)
+  })
 }
 
 function selectDate(date: string): void {
@@ -223,9 +314,10 @@ function goToday(): void {
 function resetForm(date: string): void {
   form.eventDate = date
   form.title = ''
-  form.categoryId = categories.value[0]?.id || 0
+  form.categoryId = categories.value[0]?.id || ''
   form.note = ''
   form.level = 'MEDIUM'
+  pendingFiles.value = []
 }
 
 function openCreate(date: string): void {
@@ -236,6 +328,7 @@ function openCreate(date: string): void {
 
 function openEdit(event: EventRecord): void {
   editing.value = event
+  pendingFiles.value = []
   form.eventDate = event.eventDate
   form.title = event.title
   form.categoryId = event.categoryId
@@ -253,9 +346,11 @@ async function saveEvent(): Promise<void> {
   saving.value = true
   try {
     if (editing.value) {
-      await eventApi.update(editing.value.id, form)
+      const updated = await eventApi.update(editing.value.id, form)
+      await uploadPendingFiles(updated.id)
     } else {
-      await eventApi.create(form)
+      const created = await eventApi.create(form)
+      await uploadPendingFiles(created.id)
     }
     ElMessage.success('保存成功')
     dialogVisible.value = false
@@ -264,6 +359,95 @@ async function saveEvent(): Promise<void> {
     await loadData()
   } finally {
     saving.value = false
+  }
+}
+
+async function uploadPendingFiles(eventId: string): Promise<void> {
+  if (pendingFiles.value.length === 0) {
+    return
+  }
+  for (const file of pendingFiles.value) {
+    await eventAttachmentApi.upload(eventId, file)
+  }
+  pendingFiles.value = []
+}
+
+async function uploadAttachmentRequest(options: UploadRequestOptions): Promise<void> {
+  const file = options.file as File
+  if (!validateAttachmentFile(file)) {
+    options.onError(new Error('invalid file') as never)
+    return
+  }
+  try {
+    if (editing.value) {
+      const attachment = await eventAttachmentApi.upload(editing.value.id, file)
+      attachmentMap.value = {
+        ...attachmentMap.value,
+        [editing.value.id]: [...(attachmentMap.value[editing.value.id] || []), attachment]
+      }
+      await ensureAttachmentPreview(attachment)
+    } else {
+      pendingFiles.value = [...pendingFiles.value, file]
+      ElMessage.success('已加入待上传列表，保存事件后自动绑定')
+    }
+    options.onSuccess({})
+  } catch (error) {
+    options.onError(error as never)
+  }
+}
+
+function validateAttachmentFile(file: File): boolean {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime']
+  if (!allowedTypes.includes(file.type)) {
+    ElMessage.warning('仅支持 JPG、PNG、GIF、WEBP、MP4、WEBM、MOV 文件')
+    return false
+  }
+  if (file.size > 50 * 1024 * 1024) {
+    ElMessage.warning('单个文件不能超过 50MB')
+    return false
+  }
+  return true
+}
+
+function removePendingFile(index: number): void {
+  pendingFiles.value = pendingFiles.value.filter((_, fileIndex) => fileIndex !== index)
+}
+
+async function removeAttachment(attachment: EventAttachment): Promise<void> {
+  await ElMessageBox.confirm(`确认删除附件「${attachment.originalName}」？`, '删除确认', { type: 'warning' })
+  await eventAttachmentApi.remove(attachment.eventId, attachment.id)
+  revokePreviewUrl(attachment.id)
+  attachmentMap.value = {
+    ...attachmentMap.value,
+    [attachment.eventId]: (attachmentMap.value[attachment.eventId] || []).filter(item => item.id !== attachment.id)
+  }
+  ElMessage.success('附件已删除')
+}
+
+async function previewAttachment(attachment: EventAttachment): Promise<void> {
+  await ensureAttachmentPreview(attachment)
+  previewingAttachment.value = attachment
+  previewVisible.value = true
+}
+
+async function ensureAttachmentPreview(attachment: EventAttachment): Promise<void> {
+  if (attachmentPreviewMap.value[attachment.id]) {
+    return
+  }
+  const blob = await eventAttachmentApi.content(attachment.id)
+  attachmentPreviewMap.value = {
+    ...attachmentPreviewMap.value,
+    [attachment.id]: URL.createObjectURL(blob)
+  }
+}
+
+function revokePreviewUrl(attachmentId: string): void {
+  const url = attachmentPreviewMap.value[attachmentId]
+  if (url) {
+    URL.revokeObjectURL(url)
+    const nextMap = { ...attachmentPreviewMap.value }
+    delete nextMap[attachmentId]
+    attachmentPreviewMap.value = nextMap
   }
 }
 
@@ -282,7 +466,29 @@ function levelTag(level: EventLevel): TagProps['type'] {
   return { LOW: 'info', MEDIUM: 'warning', HIGH: 'danger' }[level] as TagProps['type']
 }
 
-onMounted(loadData)
+function weekDayText(day: number): string {
+  return ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][day]
+}
+
+onMounted(() => {
+  timer = window.setInterval(() => {
+    now.value = dayjs()
+  }, 1000)
+  void loadData()
+})
+
+onUnmounted(() => {
+  if (timer) {
+    window.clearInterval(timer)
+  }
+  Object.values(attachmentPreviewMap.value).forEach(URL.revokeObjectURL)
+})
+
+watch(selectedEvents, eventsInDay => {
+  eventsInDay.flatMap(event => attachmentMap.value[event.id] || []).slice(0, 12).forEach(attachment => {
+    void ensureAttachmentPreview(attachment)
+  })
+})
 </script>
 
 <style scoped>
@@ -299,6 +505,54 @@ onMounted(loadData)
 
 .calendar-card {
   position: relative;
+}
+
+.time-widget {
+  position: relative;
+  z-index: 1;
+  display: inline-grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 176px;
+  margin-left: 8px;
+  padding: 6px 11px 6px 6px;
+  border: 1px solid rgb(255 224 239 / 82%);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgb(255 255 255 / 88%), rgb(255 246 251 / 78%));
+  box-shadow: 0 14px 28px rgb(255 143 199 / 16%);
+  backdrop-filter: blur(12px);
+}
+
+.time-widget img {
+  width: 34px;
+  height: 34px;
+  padding: 3px;
+  border-radius: 999px;
+  background: #fff;
+  object-fit: cover;
+  box-shadow: 0 8px 14px rgb(140 200 255 / 16%);
+  animation: clock-bob 3.8s ease-in-out infinite;
+}
+
+.time-content {
+  display: grid;
+  gap: 2px;
+}
+
+.time-widget span {
+  color: #a584a0;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.time-widget strong {
+  color: #ff70b5;
+  font-family: "Cascadia Mono", "Consolas", monospace;
+  font-size: 18px;
+  letter-spacing: 0;
+  line-height: 1;
+  text-shadow: 0 6px 18px rgb(255 143 199 / 18%);
 }
 
 .calendar-corner {
@@ -368,6 +622,7 @@ onMounted(loadData)
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   margin: 0;
   color: #573d59;
   font-size: 20px;
@@ -502,6 +757,20 @@ onMounted(loadData)
   font-size: 12px;
 }
 
+.media-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  color: #ff70b5;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.media-count .el-icon {
+  font-size: 12px;
+}
+
 .chip-dot,
 .color-dot,
 .event-color {
@@ -570,6 +839,128 @@ onMounted(loadData)
   line-height: 1.6;
 }
 
+.media-strip {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.media-thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 76px;
+  height: 58px;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgb(255 224 239 / 86%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 82%);
+  box-shadow: 0 10px 18px rgb(255 143 199 / 12%);
+}
+
+.media-thumb img,
+.media-thumb video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgb(74 61 79 / 28%);
+  font-size: 20px;
+}
+
+.attachment-uploader {
+  display: grid;
+  width: 100%;
+  gap: 12px;
+}
+
+.attachment-uploader :deep(.el-upload) {
+  width: 100%;
+}
+
+.attachment-uploader :deep(.el-upload-dragger) {
+  border-color: rgb(255 197 226 / 86%);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 15% 20%, rgb(255 216 234 / 52%), transparent 120px),
+    linear-gradient(135deg, rgb(255 255 255 / 84%), rgb(241 248 255 / 72%));
+}
+
+.upload-icon {
+  color: #ff8fc7;
+  font-size: 34px;
+}
+
+.upload-text {
+  color: #6e526d;
+  font-weight: 900;
+}
+
+.upload-tip {
+  color: #a584a0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.attachment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.attachment-pill {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid rgb(255 224 239 / 78%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 72%);
+  color: #6e526d;
+}
+
+.attachment-pill.pending {
+  background: linear-gradient(135deg, rgb(255 246 251 / 88%), rgb(239 248 255 / 72%));
+}
+
+.attachment-pill span,
+.attachment-pill button:not(.el-button) {
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: #6e526d;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.preview-stage {
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+}
+
+.preview-stage img,
+.preview-stage video {
+  max-width: 100%;
+  max-height: 68vh;
+  border-radius: 22px;
+  box-shadow: 0 18px 44px rgb(255 143 199 / 16%);
+}
+
 .event-actions {
   justify-content: space-between;
 }
@@ -577,6 +968,10 @@ onMounted(loadData)
 @media (max-width: 1080px) {
   .calendar-grid {
     grid-template-columns: 1fr;
+  }
+
+  .time-widget {
+    margin-left: 0;
   }
 }
 
@@ -613,6 +1008,16 @@ onMounted(loadData)
   }
   50% {
     transform: scale(1.08) rotate(5deg);
+  }
+}
+
+@keyframes clock-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(4deg);
   }
 }
 </style>

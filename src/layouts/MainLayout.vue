@@ -4,8 +4,6 @@
       <span class="sticker sticker-a">♡</span>
       <span class="sticker sticker-b">✦</span>
       <span class="sticker sticker-c">✧</span>
-      <img class="float-img float-img-a" :src="mascots.chiikawa[1]" alt="" />
-      <img class="float-img float-img-b" :src="mascots.sanrio[1]" alt="" />
     </div>
     <el-aside class="aside" width="220px">
       <div class="brand">
@@ -32,6 +30,11 @@
           <span class="nav-label">统计</span>
         </el-menu-item>
       </el-menu>
+      <div class="side-note">
+        <img src="/icons/calendar-heart.svg" alt="" />
+        <span>{{ todayText }}</span>
+        <strong>{{ sideTip }}</strong>
+      </div>
       <div class="nav-footer-stickers">
         <img :src="mascots.sanrio[2]" alt="" />
         <img :src="mascots.chiikawa[4]" alt="" />
@@ -51,6 +54,20 @@
       </el-header>
       <el-main class="main">
         <router-view />
+        <section class="page-tail">
+          <div class="tail-copy">
+            <img :src="tailIcon" alt="" />
+            <div>
+              <span>{{ tailEyebrow }}</span>
+              <strong>{{ tailTitle }}</strong>
+            </div>
+          </div>
+          <div class="tail-badges">
+            <span><img src="/icons/stars.svg" alt="" /> softly saved</span>
+            <span><img src="/icons/heart-fill.svg" alt="" /> tiny moments</span>
+            <span><img src="/icons/magic.svg" alt="" /> cute data</span>
+          </div>
+        </section>
       </el-main>
     </el-container>
   </el-container>
@@ -60,6 +77,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SwitchButton } from '@element-plus/icons-vue'
+import dayjs from 'dayjs'
 import { clearSession, getCurrentUser } from '@/utils/auth'
 import { mascots } from '@/constants/mascots'
 
@@ -77,6 +95,31 @@ const subtitle = computed(() => {
   if (route.path.includes('categories')) return '给生活贴上彩色小标签'
   if (route.path.includes('statistics')) return '看看最近的小小轨迹'
   return '把今天温柔地收进日历'
+})
+
+const todayText = computed(() => dayjs().format('YYYY.MM.DD'))
+const sideTip = computed(() => {
+  if (route.path.includes('categories')) return '颜色标签正在整理中'
+  if (route.path.includes('statistics')) return '数据糖果已经装盘'
+  return '今天也要记一颗糖'
+})
+
+const tailEyebrow = computed(() => {
+  if (route.path.includes('categories')) return 'Label Garden'
+  if (route.path.includes('statistics')) return 'Sweet Analytics'
+  return 'Memory Garden'
+})
+
+const tailTitle = computed(() => {
+  if (route.path.includes('categories')) return '让分类像贴纸一样清楚又可爱'
+  if (route.path.includes('statistics')) return '把记录变成一盒彩色数据糖'
+  return '空白处也装下一点温柔的今日气泡'
+})
+
+const tailIcon = computed(() => {
+  if (route.path.includes('categories')) return mascots.sanrio[5]
+  if (route.path.includes('statistics')) return mascots.chiikawa[2]
+  return mascots.chiikawaScene
 })
 
 function logout(): void {
@@ -124,32 +167,6 @@ function logout(): void {
   bottom: 58px;
   color: rgb(255 216 107 / 62%);
   animation-delay: -2.2s;
-}
-
-.float-img {
-  position: absolute;
-  width: 86px;
-  height: 86px;
-  object-fit: contain;
-  filter: drop-shadow(0 12px 18px rgb(255 143 199 / 20%));
-  animation: image-bob 5.6s ease-in-out infinite;
-}
-
-.float-img-a {
-  left: 232px;
-  bottom: 42px;
-}
-
-.float-img-b {
-  right: 28px;
-  bottom: 128px;
-  width: 110px;
-  height: 86px;
-  border: 4px solid rgb(255 255 255 / 78%);
-  border-radius: 26px;
-  object-fit: cover;
-  transform: rotate(7deg);
-  animation-delay: -1.8s;
 }
 
 .aside {
@@ -212,6 +229,45 @@ function logout(): void {
 .menu {
   border-right: 0;
   background: transparent;
+}
+
+.side-note {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin: 12px 14px;
+  padding: 18px 12px;
+  min-height: 180px;
+  border: 1px solid rgb(255 224 239 / 72%);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 0, rgb(255 216 234 / 56%), transparent 100px),
+    linear-gradient(180deg, rgb(255 255 255 / 64%), rgb(245 250 255 / 48%));
+  box-shadow: inset 0 0 0 5px rgb(255 255 255 / 30%), 0 12px 26px rgb(255 143 199 / 10%);
+  text-align: center;
+}
+
+.side-note img {
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 10px 18px rgb(255 143 199 / 14%);
+}
+
+.side-note span {
+  color: #ff70b5;
+  font-family: "Cascadia Mono", "Consolas", monospace;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.side-note strong {
+  max-width: 120px;
+  color: #6e526d;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .menu :deep(.el-menu-item) {
@@ -325,6 +381,85 @@ function logout(): void {
   padding: 20px 16px 24px;
 }
 
+.page-tail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 20px;
+  padding: 18px 22px;
+  min-height: 118px;
+  border: 1px solid rgb(255 224 239 / 70%);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 12% 30%, rgb(255 216 234 / 46%), transparent 170px),
+    radial-gradient(circle at 84% 45%, rgb(188 225 255 / 42%), transparent 180px),
+    linear-gradient(135deg, rgb(255 255 255 / 66%), rgb(255 249 231 / 58%));
+  box-shadow: 0 18px 44px rgb(255 143 199 / 10%), inset 0 0 0 6px rgb(255 255 255 / 26%);
+  backdrop-filter: blur(12px);
+}
+
+.tail-copy {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.tail-copy img {
+  width: 86px;
+  height: 66px;
+  border: 4px solid rgb(255 255 255 / 78%);
+  border-radius: 24px;
+  object-fit: cover;
+  box-shadow: 0 14px 28px rgb(255 143 199 / 16%);
+}
+
+.tail-copy div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.tail-copy span {
+  color: #ff70b5;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tail-copy strong {
+  color: #573d59;
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.tail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.tail-badges span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  color: #7d6379;
+  border: 1px solid rgb(255 224 239 / 76%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 62%);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.tail-badges img {
+  width: 16px;
+  height: 16px;
+}
+
 @keyframes floaty {
   0%,
   100% {
@@ -332,16 +467,6 @@ function logout(): void {
   }
   50% {
     transform: translate3d(0, -16px, 0) rotate(8deg);
-  }
-}
-
-@keyframes image-bob {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(-5deg);
-  }
-  50% {
-    transform: translate3d(0, -14px, 0) rotate(5deg);
   }
 }
 
@@ -353,13 +478,25 @@ function logout(): void {
 
   .brand span,
   .nav-label,
-  .nav-footer-stickers {
+  .nav-footer-stickers,
+  .side-note {
     display: none;
   }
 
   .nav-icon {
     width: 34px;
     height: 34px;
+  }
+}
+
+@media (max-width: 960px) {
+  .page-tail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tail-badges {
+    justify-content: flex-start;
   }
 }
 </style>

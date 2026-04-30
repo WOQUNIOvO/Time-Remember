@@ -6,7 +6,9 @@ export interface ApiResponse<T> {
 
 export type UserRole = 'USER' | 'ADMIN'
 export type EventLevel = 'LOW' | 'MEDIUM' | 'HIGH'
+export type AttachmentType = 'IMAGE' | 'GIF' | 'VIDEO'
 export type StatisticsPeriod = 'WEEK' | 'MONTH' | 'YEAR'
+export type ApiId = string
 
 export interface LoginRequest {
   username: string
@@ -19,14 +21,14 @@ export interface RegisterRequest extends LoginRequest {
 
 export interface LoginResponse {
   token: string
-  userId: number
+  userId: ApiId
   username: string
   nickname?: string
   role: UserRole
 }
 
 export interface Category {
-  id: number
+  id: ApiId
   name: string
   color: string
   createdAt: string
@@ -39,10 +41,10 @@ export interface CategoryPayload {
 }
 
 export interface EventRecord {
-  id: number
+  id: ApiId
   eventDate: string
   title: string
-  categoryId: number
+  categoryId: ApiId
   categoryName: string
   categoryColor: string
   note?: string
@@ -54,9 +56,20 @@ export interface EventRecord {
 export interface EventPayload {
   eventDate: string
   title: string
-  categoryId: number
+  categoryId: ApiId
   note?: string
   level: EventLevel
+}
+
+export interface EventAttachment {
+  id: ApiId
+  eventId: ApiId
+  type: AttachmentType
+  originalName: string
+  contentType: string
+  fileSize: number
+  url: string
+  createdAt: string
 }
 
 export interface PeriodCount {
@@ -65,7 +78,7 @@ export interface PeriodCount {
 }
 
 export interface CategoryCount {
-  categoryId: number
+  categoryId: ApiId
   categoryName: string
   categoryColor: string
   count: number
